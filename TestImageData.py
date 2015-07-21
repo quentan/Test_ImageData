@@ -65,7 +65,7 @@ def vtk_show(_renderer_1, _renderer_2, width=640 * 2, height=480):
     interactor_style = vtk.vtkInteractorStyleTrackballCamera()
     iren.SetInteractorStyle(interactor_style)
 
-    # _renderer_2.SetActiveCamera(_renderer_1.GetActiveCamera())
+    _renderer_2.SetActiveCamera(_renderer_1.GetActiveCamera())
 
     # Add a x-y-z coordinate to the original point
     axes_coor = vtk.vtkAxes()
@@ -104,6 +104,9 @@ step_x = np.arange(range_x[0] - offset, range_x[1] + offset, step)
 step_y = np.arange(range_y[0] - offset, range_y[1] + offset, step)
 step_z = np.arange(range_z[0] - offset, range_z[1] + offset, step)
 [x, y, z] = np.meshgrid(step_x, step_y, step_z)
+dim_x = len(x)
+dim_y = len(y)
+dim_z = len(z)
 
 quadric_2 = coef[0] * x * x + coef[1] * y * y + coef[2] * z * z + \
     coef[3] * x * y + coef[4] * y * z + coef[5] * x * z + \
@@ -112,18 +115,25 @@ quadric_2 = coef[0] * x * x + coef[1] * y * y + coef[2] * z * z + \
 
 # Convert numpy array to vtkFloatArray
 vtk_array = numpy_support.numpy_to_vtk(
-    num_array=quadric_2.transpose(2, 1, 0).ravel(),
+    num_array=quadric_2.transpose(2, 0, 1).ravel(),  # was (2, 1, 0)
     deep=True,
     array_type=vtk.VTK_FLOAT)
+
+spacing = [(range_x[1] - range_x[0]) / (dim_x - 1.0),
+           (range_y[1] - range_y[0]) / (dim_y - 1.0),
+           (range_z[1] - range_z[0]) / (dim_z - 1.0)]
 
 # Convert vtkFloatArray to vtkImageData
 vtk_image_data = vtk.vtkImageData()
 vtk_image_data.SetDimensions(quadric_2.shape)
 vtk_image_data.SetSpacing([0.1] * 3)  # How to set a correct spacing value??
 vtk_image_data.GetPointData().SetScalars(vtk_array)
+vtk_image_data.SetOrigin(-1, -1, -1)
+vtk_image_data.SetSpacing(spacing)
 
 dims = vtk_image_data.GetDimensions()
 bounds = vtk_image_data.GetBounds()
+
 
 implicit_volume = vtk.vtkImplicitVolume()
 implicit_volume.SetVolume(vtk_image_data)
